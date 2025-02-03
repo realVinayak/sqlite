@@ -3263,8 +3263,12 @@ static int newDatabase(BtShared*);
 ** well-formed database file, then SQLITE_CORRUPT is returned.
 ** SQLITE_BUSY is returned if the database is locked.  SQLITE_NOMEM
 ** is returned if we run out of memory.
+
+SQLITEOS_CUSTOM:
+we also need to aware if we'd be locking for reading/writing
+
 */
-static int lockBtree(BtShared *pBt){
+static int lockBtree(BtShared *pBt, int lockIntent){
   int rc;              /* Result code from subfunctions */
   MemPage *pPage1;     /* Page 1 of the database file */
   u32 nPage;           /* Number of pages in the database */
@@ -3272,7 +3276,7 @@ static int lockBtree(BtShared *pBt){
 
   assert( sqlite3_mutex_held(pBt->mutex) );
   assert( pBt->pPage1==0 );
-  rc = sqlite3PagerSharedLock(pBt->pPager);
+  rc = sqlite3PagerSharedLock(pBt->pPager, lockIntent);
   if( rc!=SQLITE_OK ) return rc;
   rc = btreeGetPage(pBt, 1, &pPage1, 0);
   if( rc!=SQLITE_OK ) return rc;
@@ -3669,7 +3673,7 @@ static SQLITE_NOINLINE int btreeBeginTrans(
     ** file is not pBt->pageSize. In this case lockBtree() will update
     ** pBt->pageSize to the page-size of the file on disk.
     */
-    while( pBt->pPage1==0 && SQLITE_OK==(rc = lockBtree(pBt)) );
+    while( pBt->pPage1==0 && SQLITE_OK==(rc = lockBtree(pBt, wrflag)) );
 
     if( rc==SQLITE_OK && wrflag ){
       if( (pBt->btsFlags & BTS_READ_ONLY)!=0 ){
