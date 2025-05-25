@@ -1,0 +1,6 @@
+.vscode/*
+Makefile copy.linux-generic
+jimsh
+new_test/*
+sqlite_cfg.h
+src/playground/*

@@ -519,7 +519,7 @@ LIBOBJS0 = alter.o analyze.o attach.o auth.o \
          memdb.o memjournal.o \
          mutex.o mutex_noop.o mutex_unix.o mutex_w32.o \
          notify.o opcodes.o os.o os_kv.o os_unix.o os_win.o \
-         pager.o parse.o pcache.o pcache1.o pragma.o prepare.o printf.o \
+         pager_custom.o parse.o pcache.o pcache1.o pragma.o prepare.o printf.o \
          random.o resolve.o rowset.o rtree.o \
          sqlite3session.o select.o sqlite3rbu.o status.o stmt.o \
          table.o threads.o tokenize.o treeview.o trigger.o \
@@ -600,7 +600,7 @@ SRC = \
   $(TOP)/src/os_unix.c \
   $(TOP)/src/os_win.c \
   $(TOP)/src/os_win.h \
-  $(TOP)/src/pager.c \
+  $(TOP)/src/pager_custom.c \
   $(TOP)/src/pager.h \
   $(TOP)/src/parse.y \
   $(TOP)/src/pcache.c \
@@ -819,7 +819,7 @@ TESTSRC2 = \
   $(TOP)/src/os_kv.c \
   $(TOP)/src/os_unix.c \
   $(TOP)/src/os_win.c \
-  $(TOP)/src/pager.c \
+  $(TOP)/src/pager_custom.c \
   $(TOP)/src/pragma.c \
   $(TOP)/src/prepare.c \
   $(TOP)/src/printf.c \
@@ -1267,8 +1267,11 @@ mutex_w32.o:	$(TOP)/src/mutex_w32.c $(DEPS_OBJ_COMMON)
 notify.o:	$(TOP)/src/notify.c $(DEPS_OBJ_COMMON)
 	$(T.cc.sqlite) -c $(TOP)/src/notify.c
 
-pager.o:	$(TOP)/src/pager.c $(DEPS_OBJ_COMMON) $(TOP)/src/pager.h
-	$(T.cc.sqlite) -c $(TOP)/src/pager.c
+# pager.o:	$(TOP)/src/pager.c $(DEPS_OBJ_COMMON) $(TOP)/src/pager.h
+# 	$(T.cc.sqlite) -c $(TOP)/src/pager.c
+
+pager_custom.o:	$(TOP)/src/pager_custom.c $(DEPS_OBJ_COMMON) $(TOP)/src/pager.h
+	$(T.cc.sqlite) -c $(TOP)/src/pager_custom.c
 
 pcache.o:	$(TOP)/src/pcache.c $(DEPS_OBJ_COMMON) $(TOP)/src/pcache.h
 	$(T.cc.sqlite) -c $(TOP)/src/pcache.c

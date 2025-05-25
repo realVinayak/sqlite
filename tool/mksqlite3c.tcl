@@ -417,7 +417,7 @@ set flist {
    pcache.c
    pcache1.c
    rowset.c
-   pager.c
+   pager_custom.c
    wal.c
 
    btmutex.c

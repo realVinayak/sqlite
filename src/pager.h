@@ -160,32 +160,32 @@ sqlite3_backup **sqlite3PagerBackupPtr(Pager*);
 int sqlite3PagerFlush(Pager*);
 
 /* Functions used to obtain and release page references. */ 
-int sqlite3PagerGet(Pager *pPager, Pgno pgno, DbPage **ppPage, int clrFlag);
-DbPage *sqlite3PagerLookup(Pager *pPager, Pgno pgno);
-void sqlite3PagerRef(DbPage*);
-void sqlite3PagerUnref(DbPage*);
-void sqlite3PagerUnrefNotNull(DbPage*);
-void sqlite3PagerUnrefPageOne(DbPage*);
+int sqlite3PagerGet(Pager *pPager, Pgno pgno, DbPage **ppPage, int clrFlag);  // DONE
+DbPage *sqlite3PagerLookup(Pager *pPager, Pgno pgno);                         // DONE
+void sqlite3PagerRef(DbPage*);                                                // DONE
+void sqlite3PagerUnref(DbPage*);                                              // DONE
+void sqlite3PagerUnrefNotNull(DbPage*);                                       // DONE
+void sqlite3PagerUnrefPageOne(DbPage*);                                       // DONE
 
 /* Operations on page references. */
-int sqlite3PagerWrite(DbPage*);
-void sqlite3PagerDontWrite(DbPage*);
+int sqlite3PagerWrite(DbPage*);                                               // DONE
+void sqlite3PagerDontWrite(DbPage*);                                          // DONE
 int sqlite3PagerMovepage(Pager*,DbPage*,Pgno,int);
-int sqlite3PagerPageRefcount(DbPage*);
-void *sqlite3PagerGetData(DbPage *); 
-void *sqlite3PagerGetExtra(DbPage *); 
+int sqlite3PagerPageRefcount(DbPage*);                                        // DONE
+void *sqlite3PagerGetData(DbPage *);                                          // DONE 
+void *sqlite3PagerGetExtra(DbPage *);                                         // DONE 
 
 /* Functions used to manage pager transactions and savepoints. */
-void sqlite3PagerPagecount(Pager*, int*);
-int sqlite3PagerBegin(Pager*, int exFlag, int);
-int sqlite3PagerCommitPhaseOne(Pager*,const char *zSuper, int);
-int sqlite3PagerExclusiveLock(Pager*, DbPage *pPage1, Pgno*);
-int sqlite3PagerSync(Pager *pPager, const char *zSuper);
-int sqlite3PagerCommitPhaseTwo(Pager*);
-int sqlite3PagerRollback(Pager*);
-int sqlite3PagerOpenSavepoint(Pager *pPager, int n);
+void sqlite3PagerPagecount(Pager*, int*);                                     // DONE
+int sqlite3PagerBegin(Pager*, int exFlag, int);                               // DONE
+int sqlite3PagerCommitPhaseOne(Pager*,const char *zSuper, int);               // DONE
+int sqlite3PagerExclusiveLock(Pager*, DbPage *pPage1, Pgno*);                 // DONE
+int sqlite3PagerSync(Pager *pPager, const char *zSuper);                      // DONE
+int sqlite3PagerCommitPhaseTwo(Pager*);                                       // DONE
+int sqlite3PagerRollback(Pager*);                                             // DONE
+int sqlite3PagerOpenSavepoint(Pager *pPager, int n);                          // DONE
 int sqlite3PagerSavepoint(Pager *pPager, int op, int iSavepoint);
-int sqlite3PagerSharedLock(Pager *pPager);
+int sqlite3PagerSharedLock(Pager *pPager);                                    // DONE
 
 #ifndef SQLITE_OMIT_WAL
   int sqlite3PagerCheckpoint(Pager *pPager, sqlite3*, int, int*, int*);

@@ -1443,7 +1443,7 @@ SRC00 = \
 # Core source code files, part 2.
 #
 SRC01 = \
-  $(TOP)\src\pager.c \
+  $(TOP)\src\pager_custom.c \
   $(TOP)\src\pcache.c \
   $(TOP)\src\pcache1.c \
   $(TOP)\src\pragma.c \
@@ -2200,8 +2200,8 @@ mutex_w32.lo:	$(TOP)\src\mutex_w32.c $(HDR)
 notify.lo:	$(TOP)\src\notify.c $(HDR)
 	$(LTCOMPILE) $(CORE_COMPILE_OPTS) -c $(TOP)\src\notify.c
 
-pager.lo:	$(TOP)\src\pager.c $(HDR) $(TOP)\src\pager.h
-	$(LTCOMPILE) $(CORE_COMPILE_OPTS) -c $(TOP)\src\pager.c
+pager_custom.lo:	$(TOP)\src\pager_custom.c $(HDR) $(TOP)\src\pager.h
+	$(LTCOMPILE) $(CORE_COMPILE_OPTS) -c $(TOP)\src\pager_custom.c
 
 pcache.lo:	$(TOP)\src\pcache.c $(HDR) $(TOP)\src\pcache.h
 	$(LTCOMPILE) $(CORE_COMPILE_OPTS) -c $(TOP)\src\pcache.c
