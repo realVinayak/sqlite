@@ -272,7 +272,7 @@ int addPageToJournal(PgHdr **phead, PgHdr **ptail, PgHdr *pPg, int *offset){
     addListEntry(phead, ptail, jEntry);
     jEntry->pgno = pPg->pgno;
     memcpy(jEntry->pData, pPg->pData, pPager->pageSize);
-    *offset++;
+    *offset = *offset + 1;
     return SQLITE_OK;
 }
 
@@ -326,7 +326,7 @@ int checkIfExists(Pager *pPager, PgHdr *pPg){\
 }
 int sqlite3PagerWrite(PgHdr *pPg){
     Pager *pPager = pPg->pPager;
-    if ((pPg->flags && PGHDR_WRITEABLE) != 0 && pPager->dbSize >= pPg->pgno){
+    if ((pPg->flags & PGHDR_WRITEABLE) != 0 && pPager->dbSize >= pPg->pgno){
         if (pPager->nSavepoint) {
             return subjournalPageIfRequired(pPg);
         }
@@ -340,12 +340,12 @@ int sqlite3PagerWrite(PgHdr *pPg){
     }
 
     if ((sqlite3BitvecTestNotNull(pPager->pInJournal, pPg->pgno) == 0)){
-
         if (pPg->pgno <= pPager->dbOrigSize){
-                    // Now, we'd need to add the page to the main journal.
-        addPageToJournal(&pPager->mainJournal, &pPager->mainJournalTail, pPg, &pPager->mainJournalOffset);
-        addPageToSavepointBitvecs(pPager, pPg);
-        sqlite3BitvecSet(pPager->pInJournal, pPg->pgno);
+            printf("Journaling page: %d\n", pPg->pgno);
+                        // Now, we'd need to add the page to the main journal.
+            addPageToJournal(&pPager->mainJournal, &pPager->mainJournalTail, pPg, &pPager->mainJournalOffset);
+            addPageToSavepointBitvecs(pPager, pPg);
+            sqlite3BitvecSet(pPager->pInJournal, pPg->pgno);
         }
 
     }
@@ -414,14 +414,23 @@ int sqlite3PagerCommitPhaseOne(
     return SQLITE_OK;
 }
 
-int sqlite3PagerCommitPhaseTwo(Pager *pPager){
+
+void resetPager(Pager *pPager){
     pPager->mainJournal = NULL;
     pPager->mainJournalTail = NULL;
     pPager->subJournal = NULL;
     pPager->subJournalTail = NULL;
     pPager->nSavepoint = 0;
     pPager->pInJournal = NULL;
+    pPager->mainJournalOffset = 0;
+    pPager->subJournalOffset = 0;
     pPager->aSavepoint = NULL;
+    pPager->cachedList = NULL;
+    pPager->dirtyList = NULL;
+}
+
+int sqlite3PagerCommitPhaseTwo(Pager *pPager){
+    resetPager(pPager);
     return SQLITE_OK;
 }
 
@@ -433,9 +442,18 @@ int sqlite3PagerSync(Pager *pPager, const char *zSuper){
     return SQLITE_OK;
 }
 
-int sqlite3PagerRollback(Pager*){
-    // TODO: Implement rollbacks!
-    return SQLITE_ERROR;
+int sqlite3PagerRollback(Pager* pPager){
+    PgHdr *journalNode = pPager->mainJournalTail;
+    do {
+        if (!journalNode) break;
+        // Copy the original file contents to the database.
+        memcpy(pPager->pFile->ppData[journalNode->pgno-1], journalNode->pData, pPager->pageSize);
+        journalNode = journalNode->pDirtyNext;
+    } while (journalNode != pPager->mainJournal);
+    pPager->pFile->size = pPager->dbOrigSize;
+    pPager->dbSize = pPager->dbOrigSize;
+    resetPager(pPager);
+    return SQLITE_OK;
 }
 
 static int pagerOpenSavepoint(Pager *pPager, int nSavepoint){
