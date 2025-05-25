@@ -443,12 +443,14 @@ int sqlite3PagerSync(Pager *pPager, const char *zSuper){
 }
 
 int sqlite3PagerRollback(Pager* pPager){
-    PgHdr *journalNode = pPager->mainJournalTail;
+    PgHdr *journalNode = pPager->mainJournal;
     do {
         if (!journalNode) break;
         // Copy the original file contents to the database.
         memcpy(pPager->pFile->ppData[journalNode->pgno-1], journalNode->pData, pPager->pageSize);
         journalNode = journalNode->pDirtyNext;
+
+        // This stop criterion is quite iffy
     } while (journalNode != pPager->mainJournal);
     pPager->pFile->size = pPager->dbOrigSize;
     pPager->dbSize = pPager->dbOrigSize;
