@@ -272,7 +272,7 @@ int addPageToJournal(PgHdr **phead, PgHdr **ptail, PgHdr *pPg, int *offset){
     addListEntry(phead, ptail, jEntry);
     jEntry->pgno = pPg->pgno;
     memcpy(jEntry->pData, pPg->pData, pPager->pageSize);
-    *offset++;
+    *offset = *offset + 1;
     return SQLITE_OK;
 }
 
@@ -326,7 +326,7 @@ int checkIfExists(Pager *pPager, PgHdr *pPg){\
 }
 int sqlite3PagerWrite(PgHdr *pPg){
     Pager *pPager = pPg->pPager;
-    if ((pPg->flags && PGHDR_WRITEABLE) != 0 && pPager->dbSize >= pPg->pgno){
+    if ((pPg->flags & PGHDR_WRITEABLE) != 0 && pPager->dbSize >= pPg->pgno){
         if (pPager->nSavepoint) {
             return subjournalPageIfRequired(pPg);
         }
@@ -340,12 +340,12 @@ int sqlite3PagerWrite(PgHdr *pPg){
     }
 
     if ((sqlite3BitvecTestNotNull(pPager->pInJournal, pPg->pgno) == 0)){
-
         if (pPg->pgno <= pPager->dbOrigSize){
-                    // Now, we'd need to add the page to the main journal.
-        addPageToJournal(&pPager->mainJournal, &pPager->mainJournalTail, pPg, &pPager->mainJournalOffset);
-        addPageToSavepointBitvecs(pPager, pPg);
-        sqlite3BitvecSet(pPager->pInJournal, pPg->pgno);
+            printf("Journaling page: %d\n", pPg->pgno);
+                        // Now, we'd need to add the page to the main journal.
+            addPageToJournal(&pPager->mainJournal, &pPager->mainJournalTail, pPg, &pPager->mainJournalOffset);
+            addPageToSavepointBitvecs(pPager, pPg);
+            sqlite3BitvecSet(pPager->pInJournal, pPg->pgno);
         }
 
     }
@@ -414,14 +414,23 @@ int sqlite3PagerCommitPhaseOne(
     return SQLITE_OK;
 }
 
-int sqlite3PagerCommitPhaseTwo(Pager *pPager){
+
+void resetPager(Pager *pPager){
     pPager->mainJournal = NULL;
     pPager->mainJournalTail = NULL;
     pPager->subJournal = NULL;
     pPager->subJournalTail = NULL;
     pPager->nSavepoint = 0;
     pPager->pInJournal = NULL;
+    pPager->mainJournalOffset = 0;
+    pPager->subJournalOffset = 0;
     pPager->aSavepoint = NULL;
+    pPager->cachedList = NULL;
+    pPager->dirtyList = NULL;
+}
+
+int sqlite3PagerCommitPhaseTwo(Pager *pPager){
+    resetPager(pPager);
     return SQLITE_OK;
 }
 
@@ -433,9 +442,20 @@ int sqlite3PagerSync(Pager *pPager, const char *zSuper){
     return SQLITE_OK;
 }
 
-int sqlite3PagerRollback(Pager*){
-    // TODO: Implement rollbacks!
-    return SQLITE_ERROR;
+int sqlite3PagerRollback(Pager* pPager){
+    PgHdr *journalNode = pPager->mainJournal;
+    do {
+        if (!journalNode) break;
+        // Copy the original file contents to the database.
+        memcpy(pPager->pFile->ppData[journalNode->pgno-1], journalNode->pData, pPager->pageSize);
+        journalNode = journalNode->pDirtyNext;
+
+        // This stop criterion is quite iffy
+    } while (journalNode != pPager->mainJournal);
+    pPager->pFile->size = pPager->dbOrigSize;
+    pPager->dbSize = pPager->dbOrigSize;
+    resetPager(pPager);
+    return SQLITE_OK;
 }
 
 static int pagerOpenSavepoint(Pager *pPager, int nSavepoint){
@@ -469,8 +489,95 @@ int sqlite3PagerOpenSavepoint(Pager *pPager, int nSavepoint){
     }
 }
 
+static int writeToDirtyList(PgHdr *journalPage, Pager *pPager){
+    Pgno jPgno = journalPage->pgno;
+    PgHdr *dirtyHead = pPager->dirtyList;
+    while (dirtyHead != NULL){
+        if (dirtyHead->pgno == jPgno){
+            memcpy(dirtyHead->pData, journalPage->pData, pPager->pageSize);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static void pagerPlaybackJournalOffset(PgHdr *jHead, PgHdr *jTail, int jOffset, Pager *pPager, Bitvec *writtenBack, int maxSize){
+    int tempOffset = 0;
+    PgHdr *journalNode = jHead;
+    // We'd need to actually write it to the dirtyList
+    do {
+        if (journalNode == NULL) break;
+        Pgno jPgno = journalNode->pgno;
+        if (tempOffset >= jOffset && (maxSize == -1 || jPgno <= maxSize)){
+            if (sqlite3BitvecTestNotNull(writtenBack, jPgno) == 0){
+                if (writeToDirtyList(journalNode, pPager)){
+                    sqlite3BitvecSet(writtenBack, jPgno);
+                }
+            }
+        }
+        journalNode = journalNode->pDirtyNext;
+        tempOffset++;
+    } while (journalNode != jTail);
+}
+
+static int pagerPlaybackSavepoint(PagerSavepoint *pSavepoint, Pager *pPager){
+    // Similar to SQLite's usual savepoint playback. If pSavepoint is NULL, then rollback the entire file.
+
+    // Start from the journalOffset, and just start writing back the data.
+    // If pSavepoint is null, then that'd be the case where journalOffset is 0
+
+    int jOffset = 0;
+    int finalDbSize = pPager->dbOrigSize;
+    if (pSavepoint){
+        jOffset = pSavepoint->iOffset;
+        finalDbSize = pSavepoint->nOrig;
+    }
+    
+    // pages are written in journal ONLY when they are in the original database, so the bitvec
+    // only needs to be of size orig.
+
+    Bitvec *writeBackJournal = sqlite3BitvecCreate(pPager->dbOrigSize);
+    pagerPlaybackJournalOffset(pPager->mainJournal, pPager->mainJournalTail, jOffset, pPager, writeBackJournal, -1);
+
+    // Need to journal back from the sub-journal (if savepoint is defined).
+    // There can be an edge case that the page to write lies outside the size at this savepoint (we ignore such changes)
+
+    if (pSavepoint){
+        const int maxSize = pSavepoint->nOrig;
+        int subJOffset = pSavepoint->iSubRec;
+        Bitvec *writeBackSubJournal = sqlite3BitvecCreate(maxSize);
+        pagerPlaybackJournalOffset(pPager->subJournal, pPager->subJournalTail, subJOffset, pPager, writeBackSubJournal, maxSize);
+    }
+
+    return SQLITE_OK;
+
+}
+
+
 int sqlite3PagerSavepoint(Pager *pPager, int op, int iSavepoint){
-    printf("Calling savepoint (unexpected!)");
+
+    if (iSavepoint > pPager->nSavepoint){
+        // Nothing to do in this case
+        return SQLITE_OK;
+    }
+
+    // If it is a release, then the iSavepoint will also be released.
+    int nNew = iSavepoint + ((op == SAVEPOINT_RELEASE) ? 0 : 1);
+
+    // We don't need to realloc the previous list, actually.
+    pPager->nSavepoint = nNew;
+
+    // Usually, SQLite when there is a savepoint release, also tries to
+    // truncate the sub-journal. But, actually, other than the bigger journal, there 
+    // should be no side-effect (so, we don't do that)
+
+    if (op == SAVEPOINT_ROLLBACK){
+        // This is the terminal savepoint. We'd need to reset the database state 
+        // as it was, when this savepoint was created.
+        PagerSavepoint *pSavepoint = (nNew == 0) ? NULL : &pPager->aSavepoint[nNew];
+        pagerPlaybackSavepoint(pSavepoint, pPager);
+    }
+
     return SQLITE_OK;
 }
 
