@@ -526,7 +526,7 @@ LIBOBJS0 = alter.o analyze.o attach.o auth.o \
          update.o upsert.o utf.o util.o vacuum.o \
          vdbe.o vdbeapi.o vdbeaux.o vdbeblob.o vdbemem.o vdbesort.o \
          vdbetrace.o vdbevtab.o vtab.o \
-         wal.o walker.o where.o wherecode.o whereexpr.o \
+         wal_custom.o walker.o where.o wherecode.o whereexpr.o \
          window.o
 LIBOBJS = $(LIBOBJS0)
 
@@ -643,7 +643,7 @@ SRC = \
   $(TOP)/src/vdbeInt.h \
   $(TOP)/src/vtab.c \
   $(TOP)/src/vxworks.h \
-  $(TOP)/src/wal.c \
+  $(TOP)/src/wal_custom.c \
   $(TOP)/src/wal.h \
   $(TOP)/src/walker.c \
   $(TOP)/src/where.c \
@@ -812,7 +812,7 @@ TESTSRC2 = \
   $(TOP)/src/func.c \
   $(TOP)/src/global.c \
   $(TOP)/src/insert.c \
-  $(TOP)/src/wal.c \
+  $(TOP)/src/wal_custom.c \
   $(TOP)/src/main.c \
   $(TOP)/src/mem5.c \
   $(TOP)/src/os.c \
@@ -1375,8 +1375,11 @@ vdbevtab.o:	$(TOP)/src/vdbevtab.c $(DEPS_OBJ_COMMON)
 vtab.o:	$(TOP)/src/vtab.c $(DEPS_OBJ_COMMON)
 	$(T.cc.sqlite) -c $(TOP)/src/vtab.c
 
-wal.o:	$(TOP)/src/wal.c $(DEPS_OBJ_COMMON)
-	$(T.cc.sqlite) -c $(TOP)/src/wal.c
+# wal.o:	$(TOP)/src/wal.c $(DEPS_OBJ_COMMON)
+# 	$(T.cc.sqlite) -c $(TOP)/src/wal.c
+
+wal_custom.o:	$(TOP)/src/wal_custom.c $(DEPS_OBJ_COMMON)
+	$(T.cc.sqlite) -c $(TOP)/src/wal_custom.c
 
 walker.o:	$(TOP)/src/walker.c $(DEPS_OBJ_COMMON)
 	$(T.cc.sqlite) -c $(TOP)/src/walker.c

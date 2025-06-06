@@ -7970,12 +7970,10 @@ case OP_JournalMode: {    /* out2 */
 #ifndef SQLITE_OMIT_WAL
   zFilename = sqlite3PagerFilename(pPager, 1);
 
-  /* Do not allow a transition to journal_mode=WAL for a database
-  ** in temporary storage or if the VFS does not support shared memory
-  */
+  // This shifts the responsibility to WAL to check if wal is supported.
   if( eNew==PAGER_JOURNALMODE_WAL
-   && (sqlite3Strlen30(zFilename)==0           /* Temp file */
-       || !sqlite3PagerWalSupported(pPager))   /* No shared-memory support */
+  
+   && (!sqlite3PagerWalSupported(pPager))   /* No shared-memory support */
   ){
     eNew = eOld;
   }

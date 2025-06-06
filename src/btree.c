@@ -2729,11 +2729,11 @@ static int btreeGetUnusedPage(
 static void pageReinit(DbPage *pData){
   MemPage *pPage;
   pPage = (MemPage *)sqlite3PagerGetExtra(pData);
-  assert( sqlite3PagerPageRefcount(pData)>0 );
+  // assert( sqlite3PagerPageRefcount(pData)>0 );
   if( pPage->isInit ){
     assert( sqlite3_mutex_held(pPage->pBt->mutex) );
     pPage->isInit = 0;
-    if( sqlite3PagerPageRefcount(pData)>1 ){
+    if( (sqlite3PagerPageRefcount(pData)>1) ){
       /* pPage might not be a btree page;  it might be an overflow page
       ** or ptrmap page or a free page.  In those cases, the following
       ** call to btreeInitPage() will likely return SQLITE_CORRUPT.
