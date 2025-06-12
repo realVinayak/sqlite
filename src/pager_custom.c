@@ -585,6 +585,7 @@ static int writeToDirtyList(PgHdr *journalPage, Pager *pPager){
             pPager->xReinit(dirtyHead);
             return 1;
         }
+        dirtyHead = dirtyHead->pDirtyNext;
     }
     return 0;
 }
